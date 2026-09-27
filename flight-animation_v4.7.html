@@ -8583,7 +8583,7 @@ function parseText(txt){
 //  t0 発射     ：3Gを超える点が3点続いた最初の点
 //  t1 噴射終了 ：t0 以降で 3G未満が0.1秒続いた最初の点
 //  t2 完全静止 ：t1 以降で「0.8〜1.2G かつ 合成角速度20rpm未満」が1秒続いた最初の点
-//  接地        ：5Gを超え、直前0.2秒の平均が2G未満の点（最初の接地）。以降は8G超の山（0.1秒以上離れたもの）
+//  接地        ：8Gを超え、直前0.2秒の平均が2G未満の点（最初の接地）。以降は8G超の山（0.1秒以上離れたもの）
 //  機体の長軸  ：噴射中の加速度の平均方向 ／ ピッチ軸：発射前の重力方向を長軸に直交させたもの
 function analyzeFlight(raw, name, idx){
   const n=raw.length;
@@ -8613,7 +8613,7 @@ function analyzeFlight(raw, name, idx){
   const contacts=[];
   let first=-1;
   for(let i=i1;i<=iEnd;i++){
-    if(GP[i]>5){
+    if(GP[i]>8){   // 8G超（空中の5G前後の力を接地と誤らないため）
       let sum=0, m=0;
       for(let k=i-1;k>=0 && t[i]-t[k]<=0.2;k--){ sum+=G[k]; m++; }
       if(m && sum/m<2){ first=i; break; }
@@ -9568,7 +9568,7 @@ function explainHTML(){
 }
 
 // ================= 評価タブ（集計システム v4.2 と同じ計算） =================
-//  着地＝最初に地面に当たった点（5G超・直前0.2秒の平均2G未満）。見つからなければ「静止の直前1秒で最大の点」。
+//  着地＝最初に地面に当たった点（8G超・直前0.2秒の平均2G未満）。見つからなければ「静止の直前1秒で最大の点」。
 //  安全スコア K＝100 −（a÷2 ＋ b÷2 ＋ ω÷12 ＋ σ÷3.3 ＋ A÷60）。a は16Gで打ち切り。
 //  命中点 M＝100×5÷（5＋ずれm）、ポイント P＝M×K÷100。
 const EV={cap:16, ka:2, kb:2, kw:12, ks:3.3, kn:60, r0:5};
@@ -9589,7 +9589,7 @@ function scoreRaw(rows){
   let quiet=-1; for(let i=bo+win;i<n-win;i++){ if(pstd(G.slice(i,i+win))<0.05){ quiet=i; break; } }
   if(quiet<0) return null;   // 止まるまで記録されていない（途中で電源が切れた等）は評価しない
   let land=-1;
-  for(let i=bo;i<quiet;i++){ if(GP[i]>5){ let sm=0,m=0; for(let k=i-1;k>=0&&t[i]-t[k]<=0.2;k--){ sm+=G[k]; m++; } if(m&&sm/m<2){ land=i; break; } } }
+  for(let i=bo;i<quiet;i++){ if(GP[i]>8){ let sm=0,m=0; for(let k=i-1;k>=0&&t[i]-t[k]<=0.2;k--){ sm+=G[k]; m++; } if(m&&sm/m<2){ land=i; break; } } }
   if(land<0){ const lo=Math.max(bo,quiet-hz); land=lo; for(let i=lo;i<quiet;i++) if(G[i]>G[land]) land=i; }
   if(land<=bo+2) return null;
   let a=0; for(let i=li;i<=bo;i++) a=Math.max(a,G[i]);
@@ -9631,23 +9631,23 @@ function renderEval(){
   const list=FL.map((c,i)=>({c, s:scoreRaw(c.raw)}));
   // 順位表はチームごとに、評価できた飛行のうち最も高い安全スコアで並べる
   list.forEach((x,i)=>{ const tm=TEAMS[i]; if(!tm) return; let best=null;
-    tm.flights.forEach(f=>{ if(f.estFrom) return; const s=scoreRaw(f.raw); if(s && (!best||s.K>best.K)) best=s; }); x.best=best; });
+    tm.flights.forEach(f=>{ const s=scoreRaw(f.raw); if(s && (!best||s.K>best.K)){ best=s; best.est=!!f.estFrom; } }); x.best=best; });
   const ok=list.filter(x=>x.best||x.s).map(x=>({...x, s:x.best||x.s}));
   ok.forEach(x=>{ const e=evErr[x.c.name]; x.M=(e==null||e==='')?null:100*EV.r0/(EV.r0+Math.max(0,+e)); x.P=x.M==null?null:x.M*x.s.K/100; });
   const allP=ok.length>0 && ok.every(x=>x.P!=null);
   const rank=[...ok].sort((p,q)=> allP ? q.P-p.P : q.s.K-p.s.K);   // 全チームのずれが入ったらポイント順、それまでは安全スコア順
   let h=`<div class="evsum"><table><tr><th>チーム</th><th class="n">安全スコア</th><th class="n">ずれ m</th><th class="n">ポイント</th></tr>`
-    + rank.map(x=>`<tr><td><b style="color:${x.c.color}">${x.c.name}</b></td><td class="n"><b>${f1(x.s.K)}</b></td>
+    + rank.map(x=>`<tr><td><b style="color:${x.c.color}">${x.c.name}</b></td><td class="n"><b>${f1(x.s.K)}</b>${x.s.est?'<small>（推定）</small>':''}</td>
       <td class="n"><input type="number" step="0.1" class="everr" data-n="${x.c.name}" value="${evErr[x.c.name]??''}" placeholder="—"></td>
       <td class="n"><b>${f1(x.P)}</b></td></tr>`).join('') + `</table>
-      <p class="evnote">順位表はチームごとに、評価できた飛行（推定を含まない）のうち最も高い安全スコアを使います。ずれ（目標点からの距離）を入れると、命中点×安全スコア÷100 のポイントが出ます。</p></div>`;
+      <p class="evnote">順位表はチームごとに、評価できた飛行のうち最も高い安全スコアを使います。ずれ（目標点からの距離）を入れると、命中点×安全スコア÷100 のポイントが出ます。</p></div>`;
   h+='<div class="evcards">';
   for(const x of list){
     const c=x.c, s=x.s;
     if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>${c.file||''} は着地して止まるまで記録されていないため、評価できません。${TEAMS[c.team]&&TEAMS[c.team].flights.length>1?'「飛行の再現」タブの見出しの欄で、ほかの飛行に切り替えられます。':''}</p></div>`; continue; }
     h+=`<div class="evcard" style="border-color:${c.color}">
       <div class="evhd"><span style="color:${c.color}">${c.name}</span><span class="evk">安全スコア${c.estTau!=null?'（推定）':''} <b>${f1(s.K)}</b></span></div>
-      ${c.estTau!=null?`<div class="evnote" style="margin:-4px 0 6px;color:#B91C1C">${c.file} は発射後${c.estTau.toFixed(2)}秒で記録が途切れたため、そこから先は推定です。途切れる直前の値を着地まで延長し、着地から静止までは同じチームの1本目の記録を当てはめています（着地の衝撃は1本目と同じ値）。順位には使いません。</div>`:''}
+      ${c.estTau!=null?`<div class="evnote" style="margin:-4px 0 6px;color:#B91C1C">${c.file} は発射後${c.estTau.toFixed(2)}秒で記録が途切れたため、そこから先は推定です。途切れる直前の値を着地まで延長し、着地から静止までは同じチームの1本目の記録を当てはめています（着地の衝撃は1本目と同じ値）。</div>`:''}
       ${TEAMS[c.team]&&TEAMS[c.team].flights.length>1?`<div class="evnote" style="margin:-4px 0 6px">${c.file} の評価（「飛行の再現」タブの見出しの欄で切り替え）　／　${TEAMS[c.team].flights.map((f,j)=>{const q=scoreRaw(f.raw);return `${j+1}本目 ${q?q.K.toFixed(1)+(f.estFrom?'（推定）':''):'評価なし'}`;}).join('・')}</div>`:''}
       <div class="evbar">${scoreBar([['a',s.da],['b',s.db],['w',s.dw],['s',s.ds],['n',s.dn]], s.K)}</div>
       <table><tr><th>項目</th><th class="n">${c.estTau!=null?'値（一部推定）':'実測'}</th><th class="n">減点</th></tr>
@@ -9705,7 +9705,7 @@ function flightLabel(f,j){
   return `${j+1}本目 ${f.file}`+(s?` ／ ${s.K.toFixed(1)}点${f.estFrom?'（推定）':''}`:' ／ 途中で終了');
 }
 function bestIndex(tm){      // 評価できる飛行のうち安全スコアが最も高いもの。なければ1本目
-  let bi=0, bk=-1; tm.flights.forEach((f,j)=>{ if(f.estFrom) return; const s=scoreRaw(f.raw); if(s && s.K>bk){ bk=s.K; bi=j; } }); return bi;
+  let bi=0, bk=-1; tm.flights.forEach((f,j)=>{ const s=scoreRaw(f.raw); if(s && s.K>bk){ bk=s.K; bi=j; } }); return bi;
 }
 function teamDefs(){
   return TEAMS.map((tm,i)=>{ const f=tm.flights[SEL[i]]; const c=analyzeFlight(f.raw, tm.name, i); c.team=i; c.file=f.file;
