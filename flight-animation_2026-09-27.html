@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ペットボトルロケット 飛行の再現 v4.0</title>
+<title>ペットボトルロケット 飛行の再現 v4.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{
@@ -121,7 +121,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
   <label class="lbtn">CSVを選ぶ（1〜3本）<input type="file" id="csvfile" accept=".csv,.CSV,text/csv,text/plain" multiple hidden></label>
   <span>またはここにCSVをドラッグ</span>
   <button id="sampleBtn">8月6日のサンプルに戻す</button>
-  <span id="loadmsg">表示中：A0003・A0011（2026年9月27日）</span>
+  <span id="loadmsg">表示中：おざ2（A0003）・ikarinng（A0011）　2026年9月27日</span>
 </div>
 
 <div id="panels">
@@ -230,7 +230,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
   <label><input type="checkbox" id="tgFollow" checked> カメラ追従</label>
 </div>
 
-<div id="ver">v4.0</div>
+<div id="ver">v4.1</div>
 
 <script type="text/plain" id="csvA0003"># rocket_logger v5.6 rate=100Hz accel=16G(2048/G) gyro=2000dps(16.4/dps) sound=A1 board=A boot=3
 t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
@@ -15238,6 +15238,8 @@ function analyzeFlight(raw, name, idx){
   const t=raw.map(r=>r[0]/1000);
   const G=raw.map(r=>Math.sqrt(r[1]*r[1]+r[2]*r[2]+r[3]*r[3])/ACC_SCALE);
   const W=raw.map(r=>Math.sqrt(r[4]*r[4]+r[5]*r[5]+r[6]*r[6])/GYRO_SCALE/6);
+  // v5.7以降の10列目 g_max（その10msの合成加速度の最大）。無ければ G と同じ
+  const GP=raw.map((r,i)=> r.length>=10 ? Math.max(G[i], r[9]/ACC_SCALE) : G[i]);
   let i0=-1, c=0;
   for(let i=0;i<n;i++){ if(G[i]>3){ if(++c>=3){ i0=i-2; break; } } else c=0; }
   if(i0<0) throw new Error("発射（3G超）が見つかりません");
@@ -15258,21 +15260,21 @@ function analyzeFlight(raw, name, idx){
   const contacts=[];
   let first=-1;
   for(let i=i1;i<=iEnd;i++){
-    if(G[i]>5){
+    if(GP[i]>5){
       let sum=0, m=0;
       for(let k=i-1;k>=0 && t[i]-t[k]<=0.2;k--){ sum+=G[k]; m++; }
       if(m && sum/m<2){ first=i; break; }
     }
   }
-  const peakNear=(i)=>{ let j=i; for(let k=i;k<n && t[k]-t[i]<=0.03;k++) if(G[k]>G[j]) j=k; return G[j]; };
+  const peakNear=(i)=>{ let j=i; for(let k=i;k<n && t[k]-t[i]<=0.03;k++) if(GP[k]>GP[j]) j=k; return GP[j]; };
   if(first>=0){
     contacts.push({t:t[first]-t0, g:peakNear(first)});
     for(let i=first+1;i<=iEnd;i++){
-      if(G[i]>8 && G[i]>=G[i-1] && (i+1>=n || G[i]>=G[i+1]) && t[i]-t0-contacts[contacts.length-1].t>=0.1)
-        contacts.push({t:t[i]-t0, g:G[i]});
+      if(GP[i]>8 && GP[i]>=GP[i-1] && (i+1>=n || GP[i]>=GP[i+1]) && t[i]-t0-contacts[contacts.length-1].t>=0.1)
+        contacts.push({t:t[i]-t0, g:GP[i]});
     }
   } else if(!recEnd){
-    let gmax=0; for(let i=iEnd;i>=0 && t[iEnd]-t[i]<=1.0;i--) gmax=Math.max(gmax,G[i]);
+    let gmax=0; for(let i=iEnd;i>=0 && t[iEnd]-t[i]<=1.0;i--) gmax=Math.max(gmax,GP[i]);
     contacts.push({t:air, g:gmax, note:"着地衝撃（瞬間は特定不可）"});
   }
   // 機体の軸
@@ -16160,10 +16162,10 @@ document.addEventListener("drop",e=>{ e.preventDefault(); LD.classList.remove("d
   if(e.dataTransfer&&e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
 document.getElementById("sampleBtn").addEventListener("click",()=>{ start(sampleDefs()); showMsg("表示中：8月6日のテスト飛行3本（サンプル）"); });
 
-// 初期化（2026年9月27日の A0003・A0011 を表示）
-start([analyzeFlight(parseText(document.getElementById("csvA0003").textContent), "A0003", 0),
-       analyzeFlight(parseText(document.getElementById("csvA0011").textContent), "A0011", 1)]);
-showMsg("表示中：A0003・A0011（2026年9月27日）");
+// 初期化（2026年9月27日の2チームを表示）
+start([analyzeFlight(parseText(document.getElementById("csvA0003").textContent), "おざ2", 0),
+       analyzeFlight(parseText(document.getElementById("csvA0011").textContent), "ikarinng", 1)]);
+showMsg("表示中：おざ2（A0003）・ikarinng（A0011）　2026年9月27日");
 requestAnimationFrame(loop);
 
 </script>
