@@ -9647,8 +9647,6 @@ function renderEval(){
     if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>${c.file||''} は着地して止まるまで記録されていないため、評価できません。${TEAMS[c.team]&&TEAMS[c.team].flights.length>1?'「飛行の再現」タブの見出しの欄で、ほかの飛行に切り替えられます。':''}</p></div>`; continue; }
     h+=`<div class="evcard" style="border-color:${c.color}">
       <div class="evhd"><span style="color:${c.color}">${c.name}</span><span class="evk">安全スコア${c.estTau!=null?'（推定）':''} <b>${f1(s.K)}</b></span></div>
-      ${c.estTau!=null?`<div class="evnote" style="margin:-4px 0 6px;color:#B91C1C">${c.file} は発射後${c.estTau.toFixed(2)}秒で記録が途切れたため、そこから先は推定です。途切れる直前の値を着地まで延長し、着地から静止までは同じチームの1本目の記録を当てはめています（着地の衝撃は1本目と同じ値）。</div>`:''}
-      ${TEAMS[c.team]&&TEAMS[c.team].flights.length>1?`<div class="evnote" style="margin:-4px 0 6px">${c.file} の評価（「飛行の再現」タブの見出しの欄で切り替え）　／　${TEAMS[c.team].flights.map((f,j)=>{const q=scoreRaw(f.raw);return `${j+1}本目 ${q?q.K.toFixed(1)+(f.estFrom?'（推定）':''):'評価なし'}`;}).join('・')}</div>`:''}
       <div class="evbar">${scoreBar([['a',s.da],['b',s.db],['w',s.dw],['s',s.ds],['n',s.dn]], s.K)}</div>
       <table><tr><th>項目</th><th class="n">${c.estTau!=null?'値（一部推定）':'実測'}</th><th class="n">減点</th></tr>
         <tr><td>打ち上げ a</td><td class="n">${f1(s.a)} G</td><td class="n">−${f1(s.da)}</td></tr>
