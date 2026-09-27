@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ペットボトルロケット 飛行の再現 v4.3</title>
+<title>ペットボトルロケット 飛行の再現 v4.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{
@@ -119,7 +119,18 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 .evk{font-size:13px; color:#374151;} .evk b{font-size:24px; color:#1F2937;}
 .evsub{font-size:12px; font-weight:bold; margin:10px 0 4px;}
 .evcmt{font-size:13px; line-height:1.7; margin-top:8px;}
-.evnote{font-size:11px; color:#6B7280; margin-top:6px; line-height:1.6;} #loadmsg.err{color:#B91C1C; font-weight:bold;}
+.evnote{font-size:11px; color:#6B7280; margin-top:6px; line-height:1.6;}
+.evexp{border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:10px; background:#FBFCFC;}
+.evexp summary{font-size:15px; font-weight:bold; cursor:pointer; padding:2px 0;}
+.evtx{font-size:13px; line-height:1.7; margin:6px 0;}
+.evfig{max-width:720px; margin:6px 0 10px;}
+.evstep{font-size:12px; font-weight:bold; color:#374151; margin:10px 0 4px;}
+.evfml{display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:14px; font-weight:bold; margin:4px 0 8px;}
+.evfml span{padding:6px 10px; border-radius:6px;}
+.evfml .b1{background:#DBEAFE; color:#1E3A8A;} .evfml .b2{background:#DCFCE7; color:#14532D;} .evfml .b3{background:#1F2937; color:#fff;}
+.evfml .op{padding:0 2px;}
+.evexp table{max-width:520px;} .evexp .evsmall{max-width:260px;}
+.evbar{margin:4px 0 8px;} #loadmsg.err{color:#B91C1C; font-weight:bold;}
 </style>
 </head>
 <body>
@@ -251,7 +262,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 
 </div>
 <div id="viewEval" style="display:none"><div id="evalBody"></div></div>
-<div id="ver">v4.3</div>
+<div id="ver">v4.4</div>
 
 <script type="text/plain" id="csvA0003"># rocket_logger v5.6 rate=100Hz accel=16G(2048/G) gyro=2000dps(16.4/dps) sound=A1 board=A boot=3
 t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
@@ -16062,7 +16073,7 @@ function resizePanels(){
   }
   drawGraphBase();
 }
-window.addEventListener("resize", ()=>{resizePanels(); renderAll(curTau);});
+window.addEventListener("resize", ()=>{ if(typeof pageMode!=="undefined" && pageMode==="eval"){ renderEval(); return; } resizePanels(); renderAll(curTau);});
 
 // ---------- 再生制御 ----------
 let playing=false, speed=1, curTau=TAU_MIN, lastTs=null, prevTau=TAU_MIN;
@@ -16171,6 +16182,59 @@ document.getElementById("tab1").addEventListener("click",()=>setMode("1"));
 document.getElementById("tab2").addEventListener("click",()=>setMode("2"));
 document.getElementById("tab3").addEventListener("click",()=>setMode("3"));
 
+// ---------- 安全スコアのしくみ（図） ----------
+const EVCOL={a:'#D97706', b:'#E03A3A', w:'#1F6FB2', s:'#7C3AED', n:'#6B7280', k:'#1F8A54'};
+const EVNAME={a:'打ち上げ', b:'着地', w:'回転', s:'振動', n:'音'};
+// 100点の帯：左から安全スコア（緑）、右端に減点を積む
+let EVW=640;   // 帯の幅（画面の幅に合わせて決め、文字が小さくなりすぎないようにする）
+function scoreBar(ded, K, opt){
+  opt=opt||{}; const W=EVW, H=opt.h||46, x0=0;
+  const px=v=>v/100*W;
+  let x=px(K), g=`<rect x="0" y="0" width="${px(K)}" height="${H}" rx="4" fill="${EVCOL.k}"/>`;
+  g+=`<text x="${Math.max(6,px(K)/2)}" y="${H/2+6}" font-size="17" font-weight="bold" fill="#fff" text-anchor="${px(K)>90?'middle':'start'}">${opt.klabel||('安全スコア '+f1(K))}</text>`;
+  const lab=[];
+  for(const [k,v] of ded){
+    if(v<=0) continue;
+    g+=`<rect x="${x}" y="0" width="${px(v)}" height="${H}" fill="${EVCOL[k]}" stroke="#fff" stroke-width="1.5"/>`;
+    lab.push({x:x+px(v)/2, k, v}); x+=px(v);
+  }
+  // 減点の名前は帯の下に、重ならないように並べる（右端は帯の幅に収める）
+  const P=[]; lab.forEach((l,i)=>P.push(i? Math.max(l.x, P[i-1]+62) : l.x));
+  for(let i=P.length-1;i>=0;i--) P[i]=Math.min(P[i], i===P.length-1? W+14 : P[i+1]-62);
+  let t=''; const Y=H+18;
+  lab.forEach((l,i)=>{ const lx=P[i];
+    t+=`<line x1="${l.x}" y1="${H}" x2="${lx}" y2="${Y-12}" stroke="${EVCOL[l.k]}" stroke-width="1"/>
+        <text x="${lx}" y="${Y}" font-size="12" text-anchor="middle" fill="${EVCOL[l.k]}" font-weight="bold">${EVNAME[l.k]}</text>
+        <text x="${lx}" y="${Y+15}" font-size="12" text-anchor="middle" fill="#374151">−${f1(l.v)}</text>`; });
+  const tot=W+36;
+  return `<svg viewBox="-4 -4 ${tot+8} ${H+44}" style="width:100%;height:auto;display:block">${g}${t}</svg>`;
+}
+function explainHTML(){
+  const ex=[['a',8],['b',12],['w',6],['s',2],['n',12]];
+  const exK=100-ex.reduce((s,x)=>s+x[1],0);
+  const full=`<svg viewBox="-4 -4 ${EVW+44} 54" style="width:100%;height:auto;display:block">
+      <rect x="0" y="0" width="${EVW}" height="46" rx="4" fill="${EVCOL.k}"/>
+      <text x="${EVW/2}" y="29" font-size="17" font-weight="bold" fill="#fff" text-anchor="middle">${EVW<520?'スタートは100点':'スタートは100点（まったく暴れずに飛べば100点のまま）'}</text></svg>`;
+  return `<details class="evexp" open><summary>安全スコアのしくみ</summary>
+    <p class="evtx">人が乗っていたら耐えられるかを、100点から減らしていく方式で表します。飛んでいるあいだに機体が暴れたぶんだけ減り、残った点が安全スコアです。</p>
+    <div class="evfig"><div class="evstep">① スタート</div>${full}
+      <div class="evstep">② 5つの暴れ方で減る（例）</div>${scoreBar(ex, exK, {klabel:'残りが安全スコア '+exK})}</div>
+    <table><tr><th>項目</th><th class="n">1点減る量</th><th class="n">人間の限界</th></tr>
+      <tr><td><b style="color:${EVCOL.a}">打ち上げ</b></td><td class="n">2 G ごと</td><td class="n">5 G</td></tr>
+      <tr><td><b style="color:${EVCOL.b}">着地</b></td><td class="n">2 G ごと</td><td class="n">—</td></tr>
+      <tr><td><b style="color:${EVCOL.w}">回転</b></td><td class="n">12 rpm ごと</td><td class="n">60 rpm</td></tr>
+      <tr><td><b style="color:${EVCOL.s}">振動</b></td><td class="n">3.3 m/s² ごと</td><td class="n">0.5 m/s²</td></tr>
+      <tr><td><b style="color:${EVCOL.n}">音</b></td><td class="n">振れ幅60 ごと</td><td class="n">85 dB</td></tr></table>
+    <p class="evtx">打ち上げはセンサーの上限が16Gなので、減点は8点で頭打ちです。着地は最初に地面に当たった瞬間の力で数えます。</p>
+    <div class="evstep">③ ポイント＝命中点 × 安全スコア ÷ 100</div>
+    <div class="evfml"><span class="b1">命中点</span><span class="op">×</span><span class="b2">安全スコア</span><span class="op">÷ 100 ＝</span><span class="b3">ポイント</span></div>
+    <table class="evsmall"><tr><th>目標からのずれ</th><th class="n">命中点</th></tr>
+      <tr><td>0 m</td><td class="n">100</td></tr><tr><td>5 m</td><td class="n">50</td></tr>
+      <tr><td>10 m</td><td class="n">33</td></tr><tr><td>20 m</td><td class="n">20</td></tr></table>
+    <p class="evtx">足し算ではなく掛け算なので、狙いどおりに飛んでも安全スコアが低ければポイントは伸びません。よく飛ぶことと、人が乗っていられる飛び方の両方が要ります。</p>
+  </details>`;
+}
+
 // ================= 評価タブ（集計システム v4.2 と同じ計算） =================
 //  着地＝最初に地面に当たった点（5G超・直前0.2秒の平均2G未満）。見つからなければ「静止の直前1秒で最大の点」。
 //  安全スコア K＝100 −（a÷2 ＋ b÷2 ＋ ω÷12 ＋ σ÷3.3 ＋ A÷60）。a は16Gで打ち切り。
@@ -16231,12 +16295,13 @@ function adviceFor(cfg,s){
 }
 function renderEval(){
   const box=document.getElementById('evalBody'); if(!box) return;
+  EVW=Math.round(Math.max(300, Math.min(640, (box.clientWidth||640)-70)));
   const list=FL.map((c,i)=>({c, s:scoreRaw(c.raw)}));
   const ok=list.filter(x=>x.s);
   ok.forEach(x=>{ const e=evErr[x.c.name]; x.M=(e==null||e==='')?null:100*EV.r0/(EV.r0+Math.max(0,+e)); x.P=x.M==null?null:x.M*x.s.K/100; });
   const allP=ok.length>0 && ok.every(x=>x.P!=null);
   const rank=[...ok].sort((p,q)=> allP ? q.P-p.P : q.s.K-p.s.K);   // 全チームのずれが入ったらポイント順、それまでは安全スコア順
-  let h=`<div class="evsum"><table><tr><th>チーム</th><th class="n">安全スコア</th><th class="n">ずれ m</th><th class="n">ポイント</th></tr>`
+  let h=explainHTML()+`<div class="evsum"><table><tr><th>チーム</th><th class="n">安全スコア</th><th class="n">ずれ m</th><th class="n">ポイント</th></tr>`
     + rank.map(x=>`<tr><td><b style="color:${x.c.color}">${x.c.name}</b></td><td class="n"><b>${f1(x.s.K)}</b></td>
       <td class="n"><input type="number" step="0.1" class="everr" data-n="${x.c.name}" value="${evErr[x.c.name]??''}" placeholder="—"></td>
       <td class="n"><b>${f1(x.P)}</b></td></tr>`).join('') + `</table>
@@ -16247,6 +16312,7 @@ function renderEval(){
     if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>発射か着地が見つからず、評価できません。</p></div>`; continue; }
     h+=`<div class="evcard" style="border-color:${c.color}">
       <div class="evhd"><span style="color:${c.color}">${c.name}</span><span class="evk">安全スコア <b>${f1(s.K)}</b></span></div>
+      <div class="evbar">${scoreBar([['a',s.da],['b',s.db],['w',s.dw],['s',s.ds],['n',s.dn]], s.K)}</div>
       <table><tr><th>項目</th><th class="n">実測</th><th class="n">減点</th></tr>
         <tr><td>打ち上げ a</td><td class="n">${f1(s.a)} G</td><td class="n">−${f1(s.da)}</td></tr>
         <tr><td>着地 b</td><td class="n">${f1(s.b)} G</td><td class="n">−${f1(s.db)}</td></tr>
