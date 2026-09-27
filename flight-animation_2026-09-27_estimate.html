@@ -30122,7 +30122,7 @@ function explainHTML(){
 //  安全スコア K＝100 −（a÷2 ＋ b÷2 ＋ ω÷12 ＋ σ÷3.3 ＋ A÷60）。a は16Gで打ち切り。
 //  命中点 M＝100×5÷（5＋ずれm）、ポイント P＝M×K÷100。
 const EV={cap:16, ka:2, kb:2, kw:12, ks:3.3, kn:60, r0:5};
-const evErr={};   // チーム名 → 目標からのずれ（m）
+const evErr={"おざ2":8.12, "ikarinng":1.62, "スペシャ":7.41};   // チーム名 → 目標からのずれ（m）。2026-09-27 当日の測定
 function pstd(a){ if(a.length<2) return 0; const m=a.reduce((x,y)=>x+y,0)/a.length; return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length); }
 function scoreRaw(rows){
   const n=rows.length, t=rows.map(r=>r[0]/1000);
