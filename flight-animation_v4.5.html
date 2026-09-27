@@ -9547,7 +9547,7 @@ function scoreRaw(rows){
   let bo=li; for(let i=li;i<n;i++){ if(G[i]<1.5){ bo=i; break; } }
   const win=Math.max(5,Math.round(hz/2));
   let quiet=-1; for(let i=bo+win;i<n-win;i++){ if(pstd(G.slice(i,i+win))<0.05){ quiet=i; break; } }
-  if(quiet<0) quiet=n-1;
+  if(quiet<0) return null;   // 止まるまで記録されていない（途中で電源が切れた等）は評価しない
   let land=-1;
   for(let i=bo;i<quiet;i++){ if(GP[i]>5){ let sm=0,m=0; for(let k=i-1;k>=0&&t[i]-t[k]<=0.2;k--){ sm+=G[k]; m++; } if(m&&sm/m<2){ land=i; break; } } }
   if(land<0){ const lo=Math.max(bo,quiet-hz); land=lo; for(let i=lo;i<quiet;i++) if(G[i]>G[land]) land=i; }
@@ -9587,7 +9587,7 @@ function adviceFor(cfg,s){
 }
 function renderEval(){
   const box=document.getElementById('evalBody'); if(!box) return;
-  EVW=Math.round(Math.max(300, Math.min(640, (box.clientWidth||640)-70)));
+  if(!renderEval._again) EVW=Math.round(Math.max(300, Math.min(640, (box.clientWidth||640)-70)));
   const list=FL.map((c,i)=>({c, s:scoreRaw(c.raw)}));
   const ok=list.filter(x=>x.s);
   ok.forEach(x=>{ const e=evErr[x.c.name]; x.M=(e==null||e==='')?null:100*EV.r0/(EV.r0+Math.max(0,+e)); x.P=x.M==null?null:x.M*x.s.K/100; });
@@ -9601,7 +9601,7 @@ function renderEval(){
   h+='<div class="evcards">';
   for(const x of list){
     const c=x.c, s=x.s;
-    if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>発射か着地が見つからず、評価できません。</p></div>`; continue; }
+    if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>着地して止まるまで記録されていないため、評価できません。</p></div>`; continue; }
     h+=`<div class="evcard" style="border-color:${c.color}">
       <div class="evhd"><span style="color:${c.color}">${c.name}</span><span class="evk">安全スコア <b>${f1(s.K)}</b></span></div>
       <div class="evbar">${scoreBar([['a',s.da],['b',s.db],['w',s.dw],['s',s.ds],['n',s.dn]], s.K)}</div>
@@ -9623,6 +9623,12 @@ function renderEval(){
   h+='</div><p class="evnote">安全スコアの決め方は「安全スコアのしくみ」タブにあります。計算は集計システム v4.2 と同じです。着地は最初に地面に当たった瞬間、打ち上げの減点は16Gで打ち切り。音の減点はセンサーの振れ幅で計算し、表示はdB（仮置きの換算：振れ幅10＝51dB）。</p>';
   box.innerHTML=h;
   box.querySelectorAll('.everr').forEach(inp=>inp.onchange=()=>{ evErr[inp.dataset.n]=inp.value; renderEval(); });
+  // カードが横に並ぶときは、帯の幅をカードの幅に合わせて描き直す（文字が小さくなりすぎないように）
+  const card=box.querySelector('.evcard .evbar');
+  if(card && !renderEval._again){
+    const want=Math.round(Math.max(300, Math.min(640, card.clientWidth-10)));
+    if(Math.abs(want-EVW)>10){ EVW=want; renderEval._again=true; renderEval(); renderEval._again=false; }
+  }
 }
 function renderHow(){
   const box=document.getElementById('howBody'); if(!box) return;
