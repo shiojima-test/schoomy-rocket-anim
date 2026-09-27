@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ペットボトルロケット 飛行の再現 v4.1</title>
+<title>ペットボトルロケット 飛行の再現 v4.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{
@@ -230,7 +230,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
   <label><input type="checkbox" id="tgFollow" checked> カメラ追従</label>
 </div>
 
-<div id="ver">v4.1</div>
+<div id="ver">v4.2</div>
 
 <script type="text/plain" id="csvA0003"># rocket_logger v5.6 rate=100Hz accel=16G(2048/G) gyro=2000dps(16.4/dps) sound=A1 board=A boot=3
 t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
@@ -15205,6 +15205,10 @@ t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
 // 表示する飛行（最大3本）。CSVを読み込むたびに作り直す
 let FL=[];
 const COLORS=[["#D97706",0xD97706],["#E03A3A",0xE03A3A],["#1F6FB2",0x1F6FB2]];
+// 音のdB換算（仮置き）：振れ幅10＝51dB。屋外の広場の平均的な音（都市公園 51dB：全国環境研協議会 騒音調査小委員会
+//「『騒音の目安』作成調査結果について」全国環境研会誌 34(4) 2009）を、発射前の振れ幅（2026-09-27の2本で中央値4〜11）に当てた。
+const SND_CAL_AMP=10, SND_CAL_DB=51, SND_SAT_RAW=750;
+const sndDb=(amp)=> SND_CAL_DB + 20*Math.log10(Math.max(1,amp)/SND_CAL_AMP);
 const SAMPLE=[{csvId:"csv002",name:"1回目"},{csvId:"csv005",name:"2回目"},{csvId:"csv008",name:"3回目"}];
 const GEE=9.80665, GYRO_SCALE=16.4, ACC_SCALE=2048, SAT_RAW=32700;
 const COL={roll:"#1F6FB2", pitch:"#D97706", yaw:"#1F8A54"};
@@ -15367,7 +15371,7 @@ function buildFlight(cfg){
     return [x,0,0,"rest"];
   }
 
-  const F={tau:[],quat:[],pos:[],rpm:[],rr:[],rp:[],ry:[],gg:[],snd:[],sat:[],phase:[],water:[]};
+  const F={tau:[],quat:[],pos:[],rpm:[],rr:[],rp:[],ry:[],gg:[],snd:[],db:[],sndSat:[],sat:[],phase:[],water:[]};
   let q=q0.clone();
   const wv=new THREE.Vector3(), dq=new THREE.Quaternion();
   const thrustDur=cfg.t1-cfg.t0;
@@ -15401,11 +15405,18 @@ function buildFlight(cfg){
     F.ry.push((gx*cfg.yaw[0]+gy*cfg.yaw[1]+gz*cfg.yaw[2])/6);
     F.gg.push(gmag);
     F.snd.push(cfg.sndSingle ? r[7] : r[8]-r[7]);
+    F.db.push(cfg.sndSingle ? null : sndDb(r[8]-r[7]));
+    F.sndSat.push(!cfg.sndSingle && r[8]>=SND_SAT_RAW);
     F.sat.push(sat);
     F.phase.push(phase);
     F.water.push(water);
   }
   F.range=v0*T;
+  // 飛行中（発射〜静止）の音の最大
+  let dbMax=null, dbSat=false;
+  for(let i=0;i<F.tau.length;i++){ if(F.tau[i]<0||F.tau[i]>cfg.air||F.db[i]==null) continue;
+    if(dbMax==null||F.db[i]>dbMax) dbMax=F.db[i]; if(F.sndSat[i]) dbSat=true; }
+  F.dbMax=dbMax; F.dbSat=dbSat;
   return F;
 }
 
@@ -15602,7 +15613,9 @@ function fillLabels(){
     document.getElementById("rev"+k).textContent=cfg.specRevs+"回転";
     const ch=document.getElementById("chr"+k); ch.textContent=cfg.chr; ch.style.color=cfg.color;
     document.getElementById("sub"+k).textContent=cfg.sub;
-    document.getElementById("sndl"+k).textContent=cfg.sndSingle?"音（1点読み）":"音（振れ幅）";
+    document.getElementById("sndl"+k).textContent=cfg.sndSingle?"音（1点読み・別方式）":"音（dB）";
+    const fl=flights[k-1];
+    if(fl && fl.dbMax!=null) document.getElementById("sub"+k).textContent=cfg.sub+` ／ 音 最大${Math.round(fl.dbMax)}dB${fl.dbSat?"以上":""}`;
   }
   document.getElementById("tabAll").textContent=FL.length>1?(FL.length+"つ並べて比較"):"表示";
   const chips=[`<button class="chip" data-t="0">発射 0.00</button>`];
@@ -15623,12 +15636,13 @@ function fillLabels(){
   const sat=FL.filter((c,i)=>flights[i].sat.some(x=>x)).map(c=>c.name);
   document.getElementById("glegend").innerHTML=
     FL.map(c=>`<b style="color:${c.color};">━ ${c.name}</b>`).join("　")
-    +(anySingle&&anyMulti?"（音の点線＝別方式・1点読みのため比較不可）":"")
+    +(anySingle?"（音の1点読みの回はdBにできないため描いていない）":"")
     +`　／ 上端の帯＝局面（<span style="background:#FBD9A8;padding:0 4px;">噴射中</span>
     <span style="background:#CFE4F5;padding:0 4px;">慣性飛行</span>
     <span style="background:#D9DDE2;padding:0 4px;">接地〜静止</span>）`
     +(sat.length?`　／ <span style="background:#FBE3E3;padding:0 4px;">網掛け</span>＝測定上限（${sat.join("・")}・角速度飽和）`:"")
-    +"　／ 破線＝センサー測定上限　／　クリック・ドラッグで時刻移動";
+    +"　／ 破線＝センサー測定上限・音は聴力保護の基準85dB　／　クリック・ドラッグで時刻移動"
+    +"<br>音のdBは仮置きの換算（振れ幅10＝51dB：屋外の広場の平均的な音。全国環境研協議会 騒音調査小委員会 2009）。センサーが上限（約760）に張り付いた区間は「以上」";
 }
 
 function disposePanels(){
@@ -15708,13 +15722,14 @@ function drawGraphBase(){
      get:(f)=>f.rpm},
     {label:"力 [G]",     y0:126, y1:180, ymax:30,  ticks:[0,16],      dash:16,  dashLabel:"測定上限16G",
      get:(f)=>f.gg},
-    {label:"音",         y0:188, y1:236, ymax:800, ticks:[0,750],     dash:null, dashLabel:null,
-     get:(f)=>f.snd}
+    {label:"音 [dB]",    y0:188, y1:236, ymin:30, ymax:100, ticks:[40,60,100], dash:85, dashLabel:"聴力保護の基準85dB",
+     get:(f)=>f.db}
   ];
   gMap={tx, dpr, X0, X1, subs, top:4, bottom:236};
 
   for(const S of subs){
-    const ty=v=>S.y1-Math.min(v,S.ymax)/S.ymax*(S.y1-S.y0);
+    const ymin=S.ymin||0;
+    const ty=v=>S.y1-(Math.min(Math.max(v,ymin),S.ymax)-ymin)/(S.ymax-ymin)*(S.y1-S.y0);
     S.ty=ty;
     // 網掛け（回転サブプロットのみ・角速度飽和した回）
     if(S.label.startsWith("回転")){
@@ -15751,7 +15766,7 @@ function drawGraphBase(){
       if(!flightVisible(fi)) continue;
       const f=flights[fi], arr=S.get(f);
       x.strokeStyle=FL[fi].color; x.lineWidth=1.3;
-      if(S.label==="音" && FL[fi].sndSingle) x.setLineDash([2,3]);
+      if(S.label.startsWith("音") && FL[fi].sndSingle){ x.setLineDash([]); continue; }   // 1点読みはdBにできないので描かない
       x.beginPath();
       for(let i=0;i<f.tau.length;i++){
         const px=tx(f.tau[i]), py=S.ty(arr[i]);
@@ -15794,6 +15809,7 @@ function drawCursor(tau){
       if(tau>f.tau[f.tau.length-1]+0.001 || tau<f.tau[0]) continue;
       const {i,k}=sample(f,tau);
       const arr=S.get(f);
+      if(arr[i]==null||arr[i+1]==null) continue;
       const v=arr[i]+(arr[i+1]-arr[i])*k;
       x.fillStyle=FL[fi].color;
       x.beginPath(); x.arc(px, S.ty(v), 2.6, 0, Math.PI*2); x.fill();
@@ -15829,7 +15845,7 @@ gc.addEventListener("mousemove",e=>{
     const {i,k}=sample(f,t);
     const rpm=f.rpm[i]+(f.rpm[i+1]-f.rpm[i])*k;
     const gg=f.gg[i]+(f.gg[i+1]-f.gg[i])*k;
-    html+=`<br><span style="color:${FL[fi].color};">■</span> ${FL[fi].name}：${Math.round(rpm)}rpm ／ ${gg.toFixed(1)}G ／ 音${Math.round(f.snd[i])}${FL[fi].sndSingle?"(別方式)":""}`;
+    html+=`<br><span style="color:${FL[fi].color};">■</span> ${FL[fi].name}：${Math.round(rpm)}rpm ／ ${gg.toFixed(1)}G ／ ${f.db[i]==null?"音(別方式)":("音"+Math.round(f.db[i])+"dB"+(f.sndSat[i]?"以上":""))}`;
   }
   gtip.innerHTML=html;
   gtip.style.display="block";
@@ -15922,7 +15938,8 @@ function updatePanel(P, masterTau, dtReal){
   document.getElementById("t"+id).textContent=tau.toFixed(2);
   document.getElementById("rpm"+id).textContent=Math.round(rpm);
   document.getElementById("g"+id).textContent=gg.toFixed(1);
-  document.getElementById("snd"+id).textContent=Math.round(f.snd[i]);
+  document.getElementById("snd"+id).innerHTML = (f.db[i]==null) ? Math.round(f.snd[i])
+    : Math.round(f.db[i])+`<small> dB${(f.sndSat[i]||f.sndSat[i+1])?" 以上":""}</small>`;
   document.getElementById("sat"+id).style.display=(f.sat[i]||f.sat[i+1])?"block":"none";
   const recEnded=(cfg.recordEnd!==null && masterTau>=cfg.recordEnd-0.005);
   document.getElementById("rec"+id).style.display=recEnded?"block":"none";
