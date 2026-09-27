@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ペットボトルロケット 飛行の再現 v4.4</title>
+<title>ペットボトルロケット 飛行の再現 v4.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{
@@ -107,10 +107,10 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 #pagetabs button{font-family:inherit; font-size:13px; font-weight:bold; padding:7px 16px; border:1px solid #E5E7EB; border-bottom:none;
   background:#F3F4F6; color:#374151; border-radius:6px 6px 0 0; cursor:pointer;}
 #pagetabs button.on{background:#1F2937; color:#fff; border-color:#1F2937;}
-#viewEval table{border-collapse:collapse; width:100%; font-size:13px;}
-#viewEval th{background:#1F2937; color:#fff; font-weight:bold; padding:5px 8px; text-align:left; font-size:12px;}
-#viewEval td{padding:5px 8px; border-bottom:1px solid #E5E7EB;}
-#viewEval .n{text-align:right;}
+#viewEval table, #viewHow table{border-collapse:collapse; width:100%; font-size:13px;}
+#viewEval th, #viewHow th{background:#1F2937; color:#fff; font-weight:bold; padding:5px 8px; text-align:left; font-size:12px;}
+#viewEval td, #viewHow td{padding:5px 8px; border-bottom:1px solid #E5E7EB;}
+#viewEval .n, #viewHow .n{text-align:right;}
 .evsum{max-width:560px; margin-bottom:10px;}
 .evsum input{width:70px; font-family:inherit; font-size:13px; padding:3px 5px; text-align:right; border:1px solid #CBD5E1; border-radius:4px;}
 .evcards{display:flex; flex-wrap:wrap; gap:10px;}
@@ -121,7 +121,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 .evcmt{font-size:13px; line-height:1.7; margin-top:8px;}
 .evnote{font-size:11px; color:#6B7280; margin-top:6px; line-height:1.6;}
 .evexp{border:1px solid #E5E7EB; border-radius:8px; padding:8px 12px; margin-bottom:10px; background:#FBFCFC;}
-.evexp summary{font-size:15px; font-weight:bold; cursor:pointer; padding:2px 0;}
+.evh2{font-size:17px; font-weight:bold; margin:2px 0 4px;}
 .evtx{font-size:13px; line-height:1.7; margin:6px 0;}
 .evfig{max-width:720px; margin:6px 0 10px;}
 .evstep{font-size:12px; font-weight:bold; color:#374151; margin:10px 0 4px;}
@@ -152,7 +152,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
   <span id="loadmsg">表示中：おざ2（A0003）・ikarinng（A0011）　2026年9月27日</span>
 </div>
 
-<div id="pagetabs"><button id="pgSim" class="on">飛行の再現</button><button id="pgEval">評価</button></div>
+<div id="pagetabs"><button id="pgSim" class="on">飛行の再現</button><button id="pgEval">評価</button><button id="pgHow">安全スコアのしくみ</button></div>
 <div id="viewSim">
 <div id="panels">
   <div class="panel" id="panel1">
@@ -262,7 +262,8 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 
 </div>
 <div id="viewEval" style="display:none"><div id="evalBody"></div></div>
-<div id="ver">v4.4</div>
+<div id="viewHow" style="display:none"><div id="howBody"></div></div>
+<div id="ver">v4.5</div>
 
 <script type="text/plain" id="csvA0003"># rocket_logger v5.6 rate=100Hz accel=16G(2048/G) gyro=2000dps(16.4/dps) sound=A1 board=A boot=3
 t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
@@ -16073,7 +16074,7 @@ function resizePanels(){
   }
   drawGraphBase();
 }
-window.addEventListener("resize", ()=>{ if(typeof pageMode!=="undefined" && pageMode==="eval"){ renderEval(); return; } resizePanels(); renderAll(curTau);});
+window.addEventListener("resize", ()=>{ if(typeof pageMode!=="undefined" && pageMode!=="sim"){ if(pageMode==="eval") renderEval(); else renderHow(); return; } resizePanels(); renderAll(curTau);});
 
 // ---------- 再生制御 ----------
 let playing=false, speed=1, curTau=TAU_MIN, lastTs=null, prevTau=TAU_MIN;
@@ -16215,7 +16216,7 @@ function explainHTML(){
   const full=`<svg viewBox="-4 -4 ${EVW+44} 54" style="width:100%;height:auto;display:block">
       <rect x="0" y="0" width="${EVW}" height="46" rx="4" fill="${EVCOL.k}"/>
       <text x="${EVW/2}" y="29" font-size="17" font-weight="bold" fill="#fff" text-anchor="middle">${EVW<520?'スタートは100点':'スタートは100点（まったく暴れずに飛べば100点のまま）'}</text></svg>`;
-  return `<details class="evexp" open><summary>安全スコアのしくみ</summary>
+  return `<div class="evexp"><h2 class="evh2">安全スコアのしくみ</h2>
     <p class="evtx">人が乗っていたら耐えられるかを、100点から減らしていく方式で表します。飛んでいるあいだに機体が暴れたぶんだけ減り、残った点が安全スコアです。</p>
     <div class="evfig"><div class="evstep">① スタート</div>${full}
       <div class="evstep">② 5つの暴れ方で減る（例）</div>${scoreBar(ex, exK, {klabel:'残りが安全スコア '+exK})}</div>
@@ -16232,7 +16233,7 @@ function explainHTML(){
       <tr><td>0 m</td><td class="n">100</td></tr><tr><td>5 m</td><td class="n">50</td></tr>
       <tr><td>10 m</td><td class="n">33</td></tr><tr><td>20 m</td><td class="n">20</td></tr></table>
     <p class="evtx">足し算ではなく掛け算なので、狙いどおりに飛んでも安全スコアが低ければポイントは伸びません。よく飛ぶことと、人が乗っていられる飛び方の両方が要ります。</p>
-  </details>`;
+  </div>`;
 }
 
 // ================= 評価タブ（集計システム v4.2 と同じ計算） =================
@@ -16301,7 +16302,7 @@ function renderEval(){
   ok.forEach(x=>{ const e=evErr[x.c.name]; x.M=(e==null||e==='')?null:100*EV.r0/(EV.r0+Math.max(0,+e)); x.P=x.M==null?null:x.M*x.s.K/100; });
   const allP=ok.length>0 && ok.every(x=>x.P!=null);
   const rank=[...ok].sort((p,q)=> allP ? q.P-p.P : q.s.K-p.s.K);   // 全チームのずれが入ったらポイント順、それまでは安全スコア順
-  let h=explainHTML()+`<div class="evsum"><table><tr><th>チーム</th><th class="n">安全スコア</th><th class="n">ずれ m</th><th class="n">ポイント</th></tr>`
+  let h=`<div class="evsum"><table><tr><th>チーム</th><th class="n">安全スコア</th><th class="n">ずれ m</th><th class="n">ポイント</th></tr>`
     + rank.map(x=>`<tr><td><b style="color:${x.c.color}">${x.c.name}</b></td><td class="n"><b>${f1(x.s.K)}</b></td>
       <td class="n"><input type="number" step="0.1" class="everr" data-n="${x.c.name}" value="${evErr[x.c.name]??''}" placeholder="—"></td>
       <td class="n"><b>${f1(x.P)}</b></td></tr>`).join('') + `</table>
@@ -16328,22 +16329,31 @@ function renderEval(){
       </table>
       <p class="evcmt">${adviceFor(c,s)}</p></div>`;
   }
-  h+='</div><p class="evnote">計算は集計システム v4.2 と同じです。着地は最初に地面に当たった瞬間、打ち上げの減点は16Gで打ち切り。音の減点はセンサーの振れ幅で計算し、表示はdB（仮置きの換算：振れ幅10＝51dB）。</p>';
+  h+='</div><p class="evnote">安全スコアの決め方は「安全スコアのしくみ」タブにあります。計算は集計システム v4.2 と同じです。着地は最初に地面に当たった瞬間、打ち上げの減点は16Gで打ち切り。音の減点はセンサーの振れ幅で計算し、表示はdB（仮置きの換算：振れ幅10＝51dB）。</p>';
   box.innerHTML=h;
   box.querySelectorAll('.everr').forEach(inp=>inp.onchange=()=>{ evErr[inp.dataset.n]=inp.value; renderEval(); });
+}
+function renderHow(){
+  const box=document.getElementById('howBody'); if(!box) return;
+  EVW=Math.round(Math.max(300, Math.min(640, (box.clientWidth||640)-70)));
+  box.innerHTML=explainHTML();
 }
 let pageMode='sim';
 function setPage(m){
   pageMode=m;
   document.getElementById('viewSim').style.display = m==='sim'?'':'none';
   document.getElementById('viewEval').style.display = m==='eval'?'':'none';
+  document.getElementById('viewHow').style.display = m==='how'?'':'none';
+  document.getElementById('pgHow').classList.toggle('on',m==='how');
   document.querySelector('.topbar .tabs').style.display = m==='sim'?'':'none';
   document.getElementById('pgSim').classList.toggle('on',m==='sim');
   document.getElementById('pgEval').classList.toggle('on',m==='eval');
-  if(m==='sim'){ resizePanels(); renderAll(curTau); } else { setPlaying(false); renderEval(); }
+  if(m==='sim'){ resizePanels(); renderAll(curTau); }
+  else { setPlaying(false); if(m==='eval') renderEval(); else renderHow(); }
 }
 document.getElementById('pgSim').onclick=()=>setPage('sim');
 document.getElementById('pgEval').onclick=()=>setPage('eval');
+document.getElementById('pgHow').onclick=()=>setPage('how');
 
 // ---------- CSVの読み込み ----------
 function sampleDefs(){
