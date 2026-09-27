@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ペットボトルロケット 飛行の再現 v4.5</title>
+<title>ペットボトルロケット 飛行の再現 v4.6</title>
 <script>/* three.js r128（MIT License）を同梱。ネットにつながっていないPCでも表示できるようにするため */
 /**
  * @license
@@ -17,7 +17,7 @@
 :root{
   --ink:#1F2937; --blue:#1F6FB2; --orange:#D97706; --green:#1F8A54;
   --bg:#FFFFFF; --gbg:#FBFCFC; --line:#E5E7EB;
-  --c1:#D97706; --c2:#E03A3A; --c3:#1F6FB2;
+  --c1:#D97706; --c2:#E03A3A; --c3:#1F6FB2; --c4:#1F8A54;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html,body{background:var(--bg); color:var(--ink);
@@ -34,11 +34,11 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 #panels{display:flex; gap:8px;}
 .panel{flex:1 1 0; min-width:0; border-radius:8px; overflow:hidden;
   background:#fff; display:flex; flex-direction:column;}
-#panel1{border:2px solid var(--c1);} #panel2{border:2px solid var(--c2);} #panel3{border:2px solid var(--c3);}
+#panel1{border:2px solid var(--c1);} #panel2{border:2px solid var(--c2);} #panel3{border:2px solid var(--c3);} #panel4{border:2px solid var(--c4);}
 .phead{padding:5px 10px 4px; border-bottom:1px solid var(--line);}
 .phead .l1{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;}
 .phead .nm{font-weight:bold; font-size:14px;}
-#panel1 .nm{color:var(--c1);} #panel2 .nm{color:var(--c2);} #panel3 .nm{color:var(--c3);}
+#panel1 .nm{color:var(--c1);} #panel2 .nm{color:var(--c2);} #panel3 .nm{color:var(--c3);} #panel4 .nm{color:var(--c4);}
 .phead .rev{font-size:19px; font-weight:bold;}
 .phead .chr{font-size:12px; font-weight:bold;}
 .phead .sub{font-size:10px; color:#6B7280; margin-top:1px;}
@@ -111,6 +111,9 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 #loader button{font-family:inherit; font-size:12px; padding:5px 10px; border:1px solid #E5E7EB; background:#fff; border-radius:6px; cursor:pointer;}
 @media (max-width:760px){ #panels{flex-direction:column;} .panel{flex:0 0 auto;} .view3d{height:260px;} }
 #loadmsg{color:#374151;}
+.fsel{font-family:inherit; font-size:12px; padding:2px 4px; border:1px solid #CBD5E1; border-radius:4px; background:#fff; max-width:230px;}
+.phead{min-height:64px;}
+.fsel.one{display:none;}
 #pagetabs{display:flex; gap:4px; margin:0 0 8px; border-bottom:2px solid #1F2937;}
 #pagetabs button{font-family:inherit; font-size:13px; font-weight:bold; padding:7px 16px; border:1px solid #E5E7EB; border-bottom:none;
   background:#F3F4F6; color:#374151; border-radius:6px 6px 0 0; cursor:pointer;}
@@ -150,14 +153,15 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
     <button id="tab1">1回目</button>
     <button id="tab2">2回目</button>
     <button id="tab3">3回目</button>
+    <button id="tab4">4</button>
   </div>
 </div>
 
 <div id="loader">
-  <label class="lbtn">CSVを選ぶ（1〜3本）<input type="file" id="csvfile" accept=".csv,.CSV,text/csv,text/plain" multiple hidden></label>
+  <label class="lbtn">CSVを選ぶ（1〜4本）<input type="file" id="csvfile" accept=".csv,.CSV,text/csv,text/plain" multiple hidden></label>
   <span>またはここにCSVをドラッグ</span>
   <button id="sampleBtn">8月6日のサンプルに戻す</button>
-  <span id="loadmsg">表示中：おざ2 1本目（A0003）・おざ2 2本目（A0018）・ikarinng（A0011）　2026年9月27日</span>
+  <span id="loadmsg">表示中：2026年9月27日</span>
 </div>
 
 <div id="pagetabs"><button id="pgSim" class="on">飛行の再現</button><button id="pgEval">評価</button><button id="pgHow">安全スコアのしくみ</button></div>
@@ -165,7 +169,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 <div id="panels">
   <div class="panel" id="panel1">
     <div class="phead">
-      <div class="l1"><span class="nm" id="nm1"></span><span class="rev" id="rev1"></span>
+      <div class="l1"><span class="nm" id="nm1"></span><select class="fsel" id="fsel1"></select><span class="rev" id="rev1"></span>
         <span class="chr" id="chr1"></span></div>
       <div class="sub" id="sub1"></div>
     </div>
@@ -187,7 +191,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 
   <div class="panel" id="panel2">
     <div class="phead">
-      <div class="l1"><span class="nm" id="nm2"></span><span class="rev" id="rev2"></span>
+      <div class="l1"><span class="nm" id="nm2"></span><select class="fsel" id="fsel2"></select><span class="rev" id="rev2"></span>
         <span class="chr" id="chr2"></span></div>
       <div class="sub" id="sub2"></div>
     </div>
@@ -209,7 +213,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 
   <div class="panel" id="panel3">
     <div class="phead">
-      <div class="l1"><span class="nm" id="nm3"></span><span class="rev" id="rev3"></span>
+      <div class="l1"><span class="nm" id="nm3"></span><select class="fsel" id="fsel3"></select><span class="rev" id="rev3"></span>
         <span class="chr" id="chr3"></span></div>
       <div class="sub" id="sub3"></div>
     </div>
@@ -227,6 +231,27 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
       <div class="nb"><div class="l" id="sndl3">音（振れ幅）</div><div class="v"><span id="snd3">0</span></div></div>
     </div>
     <div class="bars" id="bars3"></div>
+  </div>
+  <div class="panel" id="panel4">
+    <div class="phead">
+      <div class="l1"><span class="nm" id="nm4"></span><select class="fsel" id="fsel4"></select><span class="rev" id="rev4"></span>
+        <span class="chr" id="chr4"></span></div>
+      <div class="sub" id="sub4"></div>
+    </div>
+    <div class="view3d" id="view4">
+      <div class="phaseflag" id="phase4">発射前</div>
+      <div class="satflag" id="sat4">測定上限（角速度センサー飽和）</div>
+      <div class="recend" id="rec4">記録終了（着地は未記録）</div>
+      <div class="legend3d">グリッド1マス=2m ／ 機体は拡大表示（実寸 全長33cm）</div>
+      <div class="flash" id="flash4"></div><div class="gbig" id="gbig4"></div>
+    </div>
+    <div class="pnums">
+      <div class="nb"><div class="l">時刻</div><div class="v"><span id="t4">0.00</span><small> 秒</small></div></div>
+      <div class="nb"><div class="l">回転（合成）</div><div class="v"><span id="rpm4">0</span><small> rpm</small></div></div>
+      <div class="nb"><div class="l">力</div><div class="v"><span id="g4">1.0</span><small> G</small></div></div>
+      <div class="nb"><div class="l" id="sndl4">音（振れ幅）</div><div class="v"><span id="snd4">0</span></div></div>
+    </div>
+    <div class="bars" id="bars4"></div>
   </div>
 </div>
 
@@ -271,7 +296,7 @@ h1{font-size:17px; display:inline-block; margin-right:10px;}
 </div>
 <div id="viewEval" style="display:none"><div id="evalBody"></div></div>
 <div id="viewHow" style="display:none"><div id="howBody"></div></div>
-<div id="ver">v4.5</div>
+<div id="ver">v4.6</div>
 
 <script type="text/plain" id="csvA0003"># rocket_logger v5.6 rate=100Hz accel=16G(2048/G) gyro=2000dps(16.4/dps) sound=A1 board=A boot=3
 t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
@@ -16685,7 +16710,7 @@ t_ms,ax,ay,az,gx,gy,gz,snd_min,snd_max
 // ---------- 定数（SPEC.md の確定値。再計算しない） ----------
 // 表示する飛行（最大3本）。CSVを読み込むたびに作り直す
 let FL=[];
-const COLORS=[["#D97706",0xD97706],["#E03A3A",0xE03A3A],["#1F6FB2",0x1F6FB2]];
+const COLORS=[["#D97706",0xD97706],["#E03A3A",0xE03A3A],["#1F6FB2",0x1F6FB2],["#1F8A54",0x1F8A54]];
 // 音のdB換算（仮置き）：振れ幅10＝51dB。屋外の広場の平均的な音（都市公園 51dB：全国環境研協議会 騒音調査小委員会
 //「『騒音の目安』作成調査結果について」全国環境研会誌 34(4) 2009）を、発射前の振れ幅（2026-09-27の2本で中央値4〜11）に当てた。
 const SND_CAL_AMP=10, SND_CAL_DB=51, SND_SAT_RAW=750;
@@ -17084,7 +17109,7 @@ function buildBars(cfg){
 // 見出し・ジャンプ・凡例を、読み込んだ飛行から作る
 function fillLabels(){
   const anySingle=FL.some(c=>c.sndSingle), anyMulti=FL.some(c=>!c.sndSingle);
-  for(let k=1;k<=3;k++){
+  for(let k=1;k<=4;k++){
     const cfg=FL[k-1];
     document.getElementById("tab"+k).style.display=cfg?"":"none";
     document.getElementById("panel"+k).style.display=cfg?"":"none";
@@ -17153,6 +17178,7 @@ function start(defs){
   PANELS.forEach(attachOrbit);
   FL.forEach(buildBars);
   fillLabels();
+  if(typeof fillSelectors==="function") fillSelectors();
   curTau=TAU_MIN; prevTau=TAU_MIN;
   setMode("all");
   if(typeof renderEval==="function" && typeof pageMode!=="undefined" && pageMode==="eval") renderEval();
@@ -17616,7 +17642,7 @@ document.getElementById("tgSpin").addEventListener("change",()=>renderAll(curTau
 // 表示モード
 function setMode(m){
   mode=m;
-  for(let k=1;k<=3;k++){
+  for(let k=1;k<=4;k++){
     const cfg=FL[k-1];
     document.getElementById("panel"+k).style.display=(cfg && (m==="all"||m===cfg.id))?"":"none";
   }
@@ -17624,12 +17650,14 @@ function setMode(m){
   document.getElementById("tab1").classList.toggle("on",m==="1");
   document.getElementById("tab2").classList.toggle("on",m==="2");
   document.getElementById("tab3").classList.toggle("on",m==="3");
+  document.getElementById("tab4").classList.toggle("on",m==="4");
   resizePanels(); renderAll(curTau);
 }
 document.getElementById("tabAll").addEventListener("click",()=>setMode("all"));
 document.getElementById("tab1").addEventListener("click",()=>setMode("1"));
 document.getElementById("tab2").addEventListener("click",()=>setMode("2"));
 document.getElementById("tab3").addEventListener("click",()=>setMode("3"));
+document.getElementById("tab4").addEventListener("click",()=>setMode("4"));
 
 // ---------- 安全スコアのしくみ（図） ----------
 const EVCOL={a:'#D97706', b:'#E03A3A', w:'#1F6FB2', s:'#7C3AED', n:'#6B7280', k:'#1F8A54'};
@@ -17746,7 +17774,10 @@ function renderEval(){
   const box=document.getElementById('evalBody'); if(!box) return;
   if(!renderEval._again) EVW=Math.round(Math.max(300, Math.min(640, (box.clientWidth||640)-70)));
   const list=FL.map((c,i)=>({c, s:scoreRaw(c.raw)}));
-  const ok=list.filter(x=>x.s);
+  // 順位表はチームごとに、評価できた飛行のうち最も高い安全スコアで並べる
+  list.forEach((x,i)=>{ const tm=TEAMS[i]; if(!tm) return; let best=null;
+    tm.flights.forEach(f=>{ const s=scoreRaw(f.raw); if(s && (!best||s.K>best.K)) best=s; }); x.best=best; });
+  const ok=list.filter(x=>x.best||x.s).map(x=>({...x, s:x.best||x.s}));
   ok.forEach(x=>{ const e=evErr[x.c.name]; x.M=(e==null||e==='')?null:100*EV.r0/(EV.r0+Math.max(0,+e)); x.P=x.M==null?null:x.M*x.s.K/100; });
   const allP=ok.length>0 && ok.every(x=>x.P!=null);
   const rank=[...ok].sort((p,q)=> allP ? q.P-p.P : q.s.K-p.s.K);   // 全チームのずれが入ったらポイント順、それまでは安全スコア順
@@ -17754,13 +17785,14 @@ function renderEval(){
     + rank.map(x=>`<tr><td><b style="color:${x.c.color}">${x.c.name}</b></td><td class="n"><b>${f1(x.s.K)}</b></td>
       <td class="n"><input type="number" step="0.1" class="everr" data-n="${x.c.name}" value="${evErr[x.c.name]??''}" placeholder="—"></td>
       <td class="n"><b>${f1(x.P)}</b></td></tr>`).join('') + `</table>
-      <p class="evnote">ずれ（目標点からの距離）を入れると、命中点×安全スコア÷100 のポイントが出ます。</p></div>`;
+      <p class="evnote">順位表はチームごとに、評価できた飛行のうち最も高い安全スコアを使います。ずれ（目標点からの距離）を入れると、命中点×安全スコア÷100 のポイントが出ます。</p></div>`;
   h+='<div class="evcards">';
   for(const x of list){
     const c=x.c, s=x.s;
-    if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>着地して止まるまで記録されていないため、評価できません。</p></div>`; continue; }
+    if(!s){ h+=`<div class="evcard" style="border-color:${c.color}"><div class="evhd" style="color:${c.color}">${c.name}</div><p>${c.file||''} は着地して止まるまで記録されていないため、評価できません。${TEAMS[c.team]&&TEAMS[c.team].flights.length>1?'「飛行の再現」タブの見出しの欄で、ほかの飛行に切り替えられます。':''}</p></div>`; continue; }
     h+=`<div class="evcard" style="border-color:${c.color}">
       <div class="evhd"><span style="color:${c.color}">${c.name}</span><span class="evk">安全スコア <b>${f1(s.K)}</b></span></div>
+      ${TEAMS[c.team]&&TEAMS[c.team].flights.length>1?`<div class="evnote" style="margin:-4px 0 6px">${c.file} の評価（「飛行の再現」タブの見出しの欄で切り替え）　／　${TEAMS[c.team].flights.map((f,j)=>{const q=scoreRaw(f.raw);return `${j+1}本目 ${q?q.K.toFixed(1):'評価なし'}`;}).join('・')}</div>`:''}
       <div class="evbar">${scoreBar([['a',s.da],['b',s.db],['w',s.dw],['s',s.ds],['n',s.dn]], s.K)}</div>
       <table><tr><th>項目</th><th class="n">実測</th><th class="n">減点</th></tr>
         <tr><td>打ち上げ a</td><td class="n">${f1(s.a)} G</td><td class="n">−${f1(s.da)}</td></tr>
@@ -17810,26 +17842,54 @@ document.getElementById('pgEval').onclick=()=>setPage('eval');
 document.getElementById('pgHow').onclick=()=>setPage('how');
 
 // ---------- CSVの読み込み ----------
+// TEAMS＝[{name, flights:[{file, raw, label}]}]。1チーム1枚のパネルにし、何本目を見せるかは見出しの欄で選ぶ
+let TEAMS=[], SEL=[];
+function flightLabel(f,j){
+  const s=scoreRaw(f.raw);
+  return `${j+1}本目 ${f.file}`+(s?` ／ ${s.K.toFixed(1)}点`:' ／ 途中で終了');
+}
+function bestIndex(tm){      // 評価できる飛行のうち安全スコアが最も高いもの。なければ1本目
+  let bi=0, bk=-1; tm.flights.forEach((f,j)=>{ const s=scoreRaw(f.raw); if(s && s.K>bk){ bk=s.K; bi=j; } }); return bi;
+}
+function teamDefs(){
+  return TEAMS.map((tm,i)=>{ const f=tm.flights[SEL[i]]; const c=analyzeFlight(f.raw, tm.name, i); c.team=i; c.file=f.file; return c; });
+}
+function showTeams(teams){
+  TEAMS=teams.filter(t=>t.flights.length).slice(0,4);
+  SEL=TEAMS.map(bestIndex);
+  start(teamDefs());
+}
+function fillSelectors(){
+  for(let k=1;k<=4;k++){
+    const el=document.getElementById("fsel"+k), tm=TEAMS[k-1];
+    if(!tm){ el.innerHTML=""; continue; }
+    el.innerHTML=tm.flights.map((f,j)=>`<option value="${j}" ${j===SEL[k-1]?'selected':''}>${flightLabel(f,j)}</option>`).join("");
+    el.classList.toggle("one", tm.flights.length<2);
+    el.onchange=()=>{ SEL[k-1]=+el.value; start(teamDefs()); };
+  }
+}
+// 記録のテキストから飛行を取り出す（発射が入っていないものは外す）
+function flightFrom(txt, file){
+  const raw=parseText(txt);
+  try{ analyzeFlight(raw, file, 0); return {file, raw}; }catch(e){ return null; }
+}
 function sampleDefs(){
-  return SAMPLE.map((s,i)=>analyzeFlight(parseText(document.getElementById(s.csvId).textContent), s.name, i));
+  return SAMPLE.map(s=>({name:s.name, flights:[flightFrom(document.getElementById(s.csvId).textContent, s.csvId.replace('csv','FLT'))]}));
 }
 function showMsg(t,err){ const m=document.getElementById("loadmsg"); m.textContent=t; m.className=err?"err":""; }
 async function loadFiles(files){
   files=[...files].filter(f=>/\.(csv|txt)$/i.test(f.name) || (f.type||"").startsWith("text"));
   if(!files.length){ showMsg("CSVファイルを選んでください",true); return; }
-  if(files.length>3) files=files.slice(0,3);
   files.sort((a,b)=>a.name.localeCompare(b.name));
-  const defs=[], errs=[];
+  const teams=[], errs=[];
   for(const f of files){
-    try{
-      const txt=await f.text();
-      const nm=f.name.replace(/\.[^.]+$/,"");
-      defs.push(analyzeFlight(parseText(txt), nm, defs.length));
-    }catch(e){ errs.push(f.name+"："+e.message); }
+    const nm=f.name.replace(/\.[^.]+$/,"");
+    const fl=flightFrom(await f.text(), nm);
+    if(fl) teams.push({name:nm, flights:[fl]}); else errs.push(nm);
   }
-  if(!defs.length){ showMsg("表示できませんでした　"+errs.join("　"),true); return; }
-  start(defs);
-  showMsg("表示中："+defs.map(d=>d.name).join("・")+(errs.length?"　／ 表示できなかったもの　"+errs.join("　"):""), errs.length>0);
+  if(!teams.length){ showMsg("発射が記録されたファイルがありません　"+errs.join("・"),true); return; }
+  showTeams(teams.slice(0,4));
+  showMsg("表示中："+TEAMS.map(t=>t.name).join("・")+(errs.length?"　／ 発射が入っていないもの　"+errs.join("・"):"")+(teams.length>4?"　／ 5本目以降は表示していません":""), errs.length>0);
 }
 document.getElementById("csvfile").addEventListener("change",e=>{ loadFiles(e.target.files); e.target.value=""; });
 const LD=document.getElementById("loader");
@@ -17837,13 +17897,15 @@ const LD=document.getElementById("loader");
 document.addEventListener("dragleave",e=>{ if(!e.relatedTarget) LD.classList.remove("drag"); });
 document.addEventListener("drop",e=>{ e.preventDefault(); LD.classList.remove("drag");
   if(e.dataTransfer&&e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
-document.getElementById("sampleBtn").addEventListener("click",()=>{ start(sampleDefs()); showMsg("表示中：8月6日のテスト飛行3本（サンプル）"); });
+document.getElementById("sampleBtn").addEventListener("click",()=>{ showTeams(sampleDefs()); showMsg("表示中：8月6日のテスト飛行3本（サンプル）"); });
 
-// 初期化（2026年9月27日の2チームを表示）
-start([analyzeFlight(parseText(document.getElementById("csvA0003").textContent), "おざ2 1本目", 0),
-       analyzeFlight(parseText(document.getElementById("csvA0018").textContent), "おざ2 2本目", 1),
-       analyzeFlight(parseText(document.getElementById("csvA0011").textContent), "ikarinng", 2)]);
-showMsg("表示中：おざ2 1本目（A0003）・おざ2 2本目（A0018）・ikarinng（A0011）　2026年9月27日");
+// 初期化（2026年9月27日。チームごとに飛行を束ねる。発射が入っていない記録は含めない）
+const T0927=[
+  {name:"おざ2",    files:["A0003","A0018"]},
+  {name:"ikarinng", files:["A0011"]}
+];
+showTeams(T0927.map(t=>({name:t.name, flights:t.files.map(f=>flightFrom(document.getElementById("csv"+f).textContent, f)).filter(x=>x)})));
+showMsg("表示中：2026年9月27日　"+TEAMS.map(t=>t.name+"（"+t.flights.length+"本）").join("・"));
 requestAnimationFrame(loop);
 
 </script>
