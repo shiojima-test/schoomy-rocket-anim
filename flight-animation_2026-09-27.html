@@ -15439,7 +15439,7 @@ function buildFlight(cfg){
     F.gg.push(gmag);
     F.snd.push(cfg.sndSingle ? r[7] : r[8]-r[7]);
     F.db.push(cfg.sndSingle ? null : sndDb(r[8]-r[7]));
-    F.sndSat.push(!cfg.sndSingle && r[8]>=SND_SAT_RAW);
+    F.sndSat.push(!cfg.sndSingle && r[8]>=SND_SAT_RAW && (r[8]-r[7])>=600);   // 上限に張り付き、かつ大きく振れている瞬間だけ「以上」
     F.sat.push(sat);
     F.phase.push(phase);
     F.water.push(water);
@@ -15973,7 +15973,7 @@ function updatePanel(P, masterTau, dtReal){
   document.getElementById("rpm"+id).textContent=Math.round(rpm);
   document.getElementById("g"+id).textContent=gg.toFixed(1);
   document.getElementById("snd"+id).innerHTML = (f.db[i]==null) ? Math.round(f.snd[i])
-    : Math.round(f.db[i])+`<small> dB${(f.sndSat[i]||f.sndSat[i+1])?" 以上":""}</small>`;
+    : Math.round(f.db[i])+`<small> dB${f.sndSat[i]?" 以上":""}</small>`;
   document.getElementById("sat"+id).style.display=(f.sat[i]||f.sat[i+1])?"block":"none";
   const recEnded=(cfg.recordEnd!==null && masterTau>=cfg.recordEnd-0.005);
   document.getElementById("rec"+id).style.display=recEnded?"block":"none";
